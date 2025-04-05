@@ -13,6 +13,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import {authRoutes} from './routes/authRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
+import postRequirementRoutes from './routes/postRoutes.js';
 dotenv.config();
 
 const app = express();
@@ -56,6 +57,7 @@ app.use(errorHandler);
 app.use('/api',authRoutes);
 app.use('/api',notificationRoutes);
 app.use('/api',profileRoutes);
+app.use('/api',postRequirementRoutes);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

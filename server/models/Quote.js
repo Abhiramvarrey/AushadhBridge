@@ -1,20 +1,16 @@
 import mongoose from 'mongoose';
 
 const quoteSchema = new mongoose.Schema({
-  requirement: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Requirement',
-    required: true
-  },
   fromUser: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    index: true // Index for querying quotes by user
   },
   toUser: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    index: true // Index for querying quotes by user
   },
   items: [{
     name: {
@@ -51,7 +47,8 @@ const quoteSchema = new mongoose.Schema({
   },
   validUntil: {
     type: Date,
-    required: true
+    required: true,
+    index: { expires: '0s' } // TTL index to auto-expire quotes after validity period
   },
   notes: String,
   termsAndConditions: String,
@@ -62,14 +59,5 @@ const quoteSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
-
-// Index for querying quotes by user
-quoteSchema.index({ fromUser: 1, toUser: 1 });
-
-// Index for requirement reference
-quoteSchema.index({ requirement: 1 });
-
-// TTL index to auto-expire quotes after validity period
-quoteSchema.index({ validUntil: 1 }, { expireAfterSeconds: 0 });
 
 export default mongoose.model('Quote', quoteSchema);
