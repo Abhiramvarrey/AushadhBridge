@@ -1,54 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
-import { useInfiniteQuery } from '@tanstack/react-query';
 import axios from '../lib/axios';
-import { format } from 'date-fns';
-import { FileText, Clock, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-interface RequirementItem {
-  name: string;
-  quantity: number;
-  unit: string;
-}
-
-interface Requirement {
+interface Shop {
   _id: string;
-  title: string;
-  description: string;
-  shopName: string;
-  deadline: string;
-  status: string;
-  items: RequirementItem[];
-  createdAt: string;
+  name: string;
+  category: string;
 }
 
 const ConnectShops = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [shops, setShops] = useState<Shop[]>([]);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
-  const [selectedRequirement, setSelectedRequirement] = useState<Requirement | null>(null);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status, error } =
-    useInfiniteQuery({
-      queryKey: ['connect-shops-requirements'],
-      queryFn: async ({ pageParam = 1 }) => {
-        const response = await axios.get(`/api/requirements?page=${pageParam}`);
-        return response.data;
-      },
-      getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
-    });
+  useEffect(() => {
+    const fetchShops = async () => {
+      try {
+        const response = await axios.get('/shops', {
+          params: {
+            search: searchTerm,
+          },
+        });
+        setShops(response.data);
+      } catch (error) {
+        toast.error('Failed to fetch shops');
+      }
+    };
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLDivElement;
-    const bottom = target.scrollHeight - target.scrollTop === target.clientHeight;
-    if (bottom && hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
+    fetchShops();
+  }, [searchTerm]);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
   };
 
-  const handleSendQuote = async (requirementId: string, quoteData: any) => {
+  const handleSendQuote = async (shopId: string, quoteData: any) => {
     try {
       await axios.post(`/api/quotes`, {
-        requirementId,
+        shopId,
         ...quoteData,
       });
       toast.success('Quote sent successfully!');
@@ -58,111 +49,99 @@ const ConnectShops = () => {
     }
   };
 
-  if (status === 'loading') {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-secondary"></div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const handleSendRequest = async (shopId: string) => {
+    try {
+      await axios.post(`/api/requests`, {
+        shopId,
+      });
+      toast.success('Request sent successfully!');
+    } catch (error) {
+      toast.error('Failed to send request');
+    }
+  };
 
-  if (status === 'error') {
-    return (
-      <DashboardLayout>
-        <div className="text-center text-red-500">
-          Error loading requirements: {(error as Error)?.message}
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const handleWithdrawRequest = async (shopId: string) => {
+    try {
+      await axios.delete(`/api/requests/${shopId}`);
+      toast.success('Request withdrawn successfully!');
+    } catch (error) {
+      toast.error('Failed to withdraw request');
+    }
+  };
+
+  const handleShowShopDetails = (shop: Shop) => {
+    setSelectedShop(shop);
+  };
 
   return (
     <DashboardLayout>
-      <div className="space-y-4" onScroll={handleScroll}>
+      <div className="space-y-4">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-white">Connect with Shops</h1>
           <div className="flex space-x-4">
-            <select className="bg-primary-light text-white rounded-md px-4 py-2 border border-gray-700">
-              <option value="">All Categories</option>
-              <option value="medical">Medical Supplies</option>
-              <option value="equipment">Equipment</option>
-              <option value="pharmaceuticals">Pharmaceuticals</option>
-            </select>
             <input
               type="text"
               placeholder="Search shops..."
+              value={searchTerm}
+              onChange={handleSearch}
               className="bg-primary-light text-white rounded-md px-4 py-2 border border-gray-700"
             />
           </div>
         </div>
 
         <div className="grid gap-6">
-          {data?.pages.map((page, i) => (
-            <React.Fragment key={i}>
-              {page.requirements.map((requirement: Requirement) => (
-                <div
-                  key={requirement._id}
-                  className="bg-primary-light rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-xl font-semibold text-white mb-2">
-                        {requirement.shopName}
-                      </h3>
-                      <div className="flex items-center text-gray-400 mb-4">
-                        <Clock className="h-4 w-4 mr-2" />
-                        <span>
-                          Deadline: {format(new Date(requirement.deadline), 'PPP')}
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setSelectedRequirement(requirement);
-                        setIsQuoteModalOpen(true);
-                      }}
-                      className="btn-primary flex items-center"
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      Send Quote
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {requirement.items.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between bg-primary rounded-lg p-4"
-                      >
-                        <div className="flex items-center">
-                          <FileText className="h-5 w-5 text-secondary mr-3" />
-                          <div>
-                            <p className="text-white font-medium">{item.name}</p>
-                            <p className="text-sm text-gray-400">
-                              Quantity: {item.quantity} {item.unit}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+          {shops.map((shop) => (
+            <div
+              key={shop._id}
+              className="bg-primary-light rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xl font-semibold text-white mb-2">
+                    {shop.name}
+                  </h3>
+                  {/* <p className="text-gray-400 mb-4">{shop.description}</p> */}
+                  <p className="text-gray-400 mb-4">
+                    Category: {shop.category}
+                  </p>
                 </div>
-              ))}
-            </React.Fragment>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => handleSendRequest(shop._id)}
+                    className="btn-primary flex items-center"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Request
+                  </button>
+                  <button
+                    onClick={() => handleWithdrawRequest(shop._id)}
+                    className="btn-primary flex items-center"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Withdraw Request
+                  </button>
+                  <button
+                    onClick={() => handleShowShopDetails(shop)}
+                    className="btn-primary flex items-center"
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Show Details
+                  </button>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
 
-        {hasNextPage && (
-          <div className="flex justify-center mt-6">
-            <button
-              onClick={() => fetchNextPage()}
-              disabled={isFetchingNextPage}
-              className="btn-secondary"
-            >
-              {isFetchingNextPage ? 'Loading more...' : 'Load more'}
-            </button>
+        {selectedShop && (
+          <div className="bg-primary-light rounded-lg p-6 shadow-lg">
+            <h2 className="text-xl font-semibold text-white mb-4">
+              {selectedShop.name}
+            </h2>
+            <p className="text-gray-400 mb-4">{selectedShop.description}</p>
+            <p className="text-gray-400 mb-4">
+              Category: {selectedShop.category}
+            </p>
           </div>
         )}
       </div>
@@ -171,3 +150,4 @@ const ConnectShops = () => {
 };
 
 export default ConnectShops;
+
