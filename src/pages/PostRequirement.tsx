@@ -4,6 +4,7 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import { Plus, Trash2, Calendar } from 'lucide-react';
 import axios from '../lib/axios';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
 
 interface Item {
   name: string;
@@ -34,10 +35,11 @@ const PostRequirement = () => {
     e.preventDefault();
 
     try {
-      await axios.post('/api/requirements', {
+
+      await axios.post('/post-requirement', {
         deadline,
         items
-      }, { headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` }});
+      }, { headers: { Authorization: `Bearer ${useAuthStore.getState().token}` }});
 
       toast.success('Requirement posted successfully!');
       navigate('/dashboard/my-posts');
@@ -110,8 +112,9 @@ const PostRequirement = () => {
                     className="w-32 bg-primary-light text-white rounded-md px-4 py-2 border border-gray-700"
                   >
                     <option value="units">Units</option>
+                    <option value="strips">Strips</option>
                     <option value="boxes">Boxes</option>
-                    <option value="packs">Packs</option>
+                    <option value="tablets">Tablets</option>
                     <option value="kg">Kilograms</option>
                     <option value="liters">Liters</option>
                   </select>
